@@ -1,0 +1,104 @@
+#!/bin/bash
+#
+# IAR C-SPY Shell Interface for Linux
+# Copyright (c) 2023 IAR Systems AB
+# 
+
+TOOLKIT_DIR=/opt/iarsystems/bxarm
+TOOLKIT=${TOOLKIT_DIR//\/opt\/iarsystems\/bx}
+CSPY_CLI=$TOOLKIT_DIR/common/bin/CSpyBat
+
+HEADER="
+     IAR C-SPY Shell Utility
+     Copyright 2023 IAR Systems AB.
+"
+
+CPU=Cortex-M0
+FPU=None
+ENDIAN=little
+DRIVER=SIM2
+
+function show_help() {
+  echo -e "$HEADER"
+echo "
+Usage:
+  cspyshell --elf /path/to/file.elf [options]
+
+Available options:
+
+"
+}
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--crun)
+			CRUN_ENABLE=--rtc_enable
+      CRUN_FILTER=--rtc_filter
+			;;
+		--driver)
+			DRIVER=${2^^}
+			shift
+			;;
+		--elf)
+			ELF=$2
+			shift
+			;;
+		--cpu)
+			CPU=$2
+			shift
+			;;
+		--fpu)
+			FPU=$2
+			shift
+			;;
+		--endian)
+			ENDIAN=$2
+			shift
+			;;
+		--semihosting)
+			SEMIHOSTING=--semihosting
+			;;
+    --help)
+      show_help
+      exit 0
+      ;;
+		-*)
+			echo "${0}: Illegal option $1"
+			exit 1
+			;;
+	esac
+	shift $(( $# > 0 ? 1 : 0 ))
+done
+
+TEMP_FILE=$(mktemp -q)
+
+$CSPY_CLI --silent \
+$TOOLKIT_DIR/$TOOLKIT/bin/lib${TOOLKIT}PROC.so \
+$TOOLKIT_DIR/$TOOLKIT/bin/lib${TOOLKIT}${DRIVER}.so \
+$RTC_ENABLE \
+--plugin $TOOLKIT_DIR/$TOOLKIT/bin/lib${TOOLKIT}LibsupportUniversal.so \
+--debug_file=$ELF \
+--backend \
+--cpu=$CPU \
+--fpu=$FPU \
+--endian=$ENDIAN \
+$SEMIHOSTING > $TEMP_FILE
+
+echo -e "$HEADER"
+
+$CSPY_CLI --silent \
+$TOOLKIT_DIR/$TOOLKIT/bin/lib${TOOLKIT}PROC.so \
+$TOOLKIT_DIR/$TOOLKIT/bin/lib${TOOLKIT}${DRIVER}.so \
+$CRUN_ENABLE \
+$CRUN_FILTER \
+--debug_file=$ELF \
+--plugin $TOOLKIT_DIR/$TOOLKIT/bin/lib${TOOLKIT}LibsupportUniversal.so \
+--backend \
+--cpu=$CPU \
+--fpu=$FPU \
+--endian=$ENDIAN \
+$SEMIHOSTING < $TEMP_FILE 2> /dev/null
+
+rm $TEMP_FILE > /dev/null
+
+
